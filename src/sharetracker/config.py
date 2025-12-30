@@ -17,6 +17,7 @@ class AppConfig:
     coinspot_api_key: str | None
     coinspot_api_key_header: str
     coinspot_history_url_template: str
+    coinspot_latest_url: str | None
     coinspot_timeout_seconds: int
 
 
@@ -49,6 +50,10 @@ def load_config(path: str) -> AppConfig:
         coinspot_history_url_template=coinspot_cfg.get(
             "history_url_template",
             "https://www.coinspot.com.au/pubapi/v2/market/history?c={symbol}",
+        ),
+        coinspot_latest_url=coinspot_cfg.get(
+            "latest_url",
+            "https://www.coinspot.com.au/pubapi/latest",
         ),
         coinspot_timeout_seconds=int(coinspot_cfg.get("timeout_seconds", 30)),
     )

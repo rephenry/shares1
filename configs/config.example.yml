@@ -20,6 +20,7 @@ paths:
 # Optional CoinSpot pricing (crypto AUD pairs)
 coinspot:
   secrets_path: "configs/coinspot.private.yml"
+  latest_url: "https://www.coinspot.com.au/pubapi/latest"
   history_url_template: "https://www.coinspot.com.au/pubapi/v2/market/history?c={symbol}"
   api_key_header: "key"
   timeout_seconds: 30

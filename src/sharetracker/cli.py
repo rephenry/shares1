@@ -64,6 +64,7 @@ def run(
     coinspot_cache = CoinspotPriceCache(
         cache_dir=cfg.processed_dir / "price_cache",
         history_url_template=cfg.coinspot_history_url_template,
+        latest_url=cfg.coinspot_latest_url,
         api_key=cfg.coinspot_api_key,
         api_key_header=cfg.coinspot_api_key_header,
         timeout_seconds=cfg.coinspot_timeout_seconds,

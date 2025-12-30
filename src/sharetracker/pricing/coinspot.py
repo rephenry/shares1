@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 import json
+import urllib.error
 import urllib.request
 
 import pandas as pd
@@ -38,13 +39,27 @@ def _extract_timestamp(row: dict) -> pd.Timestamp | None:
     return None
 
 
+def _extract_price_value(value: object) -> float | None:
+    if isinstance(value, (int, float)):
+        return float(value)
+    if isinstance(value, dict):
+        for key in ("last", "price", "close", "bid", "ask", "rate"):
+            if key in value and value[key] is not None:
+                try:
+                    return float(value[key])
+                except (TypeError, ValueError):
+                    return None
+        return None
+    try:
+        return float(value)  # type: ignore[arg-type]
+    except (TypeError, ValueError):
+        return None
+
+
 def _extract_price(row: dict) -> float | None:
     for key in ("close", "price", "last", "rate"):
         if key in row and row[key] is not None:
-            try:
-                return float(row[key])
-            except (TypeError, ValueError):
-                return None
+            return _extract_price_value(row[key])
     return None
 
 
@@ -71,10 +86,37 @@ def _payload_to_frame(payload: object) -> pd.DataFrame:
     return df
 
 
+def _payload_latest_to_frame(payload: object, symbol: str, start: str, end: str) -> pd.DataFrame:
+    if not isinstance(payload, dict):
+        return pd.DataFrame()
+    prices = payload.get("prices")
+    if not isinstance(prices, dict):
+        return pd.DataFrame()
+
+    key = symbol.lower()
+    value = prices.get(key)
+    if value is None:
+        value = prices.get(symbol.upper()) or prices.get(symbol.lower())
+    if value is None:
+        return pd.DataFrame()
+
+    price = _extract_price_value(value)
+    if price is None:
+        return pd.DataFrame()
+
+    idx = pd.bdate_range(start=start, end=end)
+    if len(idx) == 0:
+        idx = pd.DatetimeIndex([pd.to_datetime(start)])
+    df = pd.DataFrame({"close": [price] * len(idx)}, index=idx)
+    df.index = pd.to_datetime(df.index).tz_localize(None)
+    return df
+
+
 @dataclass
 class CoinspotPriceCache:
     cache_dir: Path
     history_url_template: str
+    latest_url: str | None = None
     api_key: str | None = None
     api_key_header: str = "key"
     timeout_seconds: int = 30
@@ -92,9 +134,27 @@ class CoinspotPriceCache:
         req = urllib.request.Request(url)
         if self.api_key:
             req.add_header(self.api_key_header, self.api_key)
-        with urllib.request.urlopen(req, timeout=self.timeout_seconds) as resp:
-            payload = json.load(resp)
+        try:
+            with urllib.request.urlopen(req, timeout=self.timeout_seconds) as resp:
+                payload = json.load(resp)
+        except urllib.error.HTTPError as exc:
+            print(f"Warning: CoinSpot history fetch failed for {ticker} ({exc.code})")
+            return pd.DataFrame()
         return _payload_to_frame(payload)
+
+    def _fetch_latest(self, ticker: str, start: str, end: str) -> pd.DataFrame:
+        if not self.latest_url:
+            return pd.DataFrame()
+        req = urllib.request.Request(self.latest_url)
+        if self.api_key:
+            req.add_header(self.api_key_header, self.api_key)
+        try:
+            with urllib.request.urlopen(req, timeout=self.timeout_seconds) as resp:
+                payload = json.load(resp)
+        except urllib.error.HTTPError as exc:
+            print(f"Warning: CoinSpot latest fetch failed ({exc.code})")
+            return pd.DataFrame()
+        return _payload_latest_to_frame(payload, self._coin_symbol(ticker), start, end)
 
     def load_or_fetch(self, ticker: str, start: str, end: str) -> pd.Series:
         self.cache_dir.mkdir(parents=True, exist_ok=True)
@@ -108,7 +168,10 @@ class CoinspotPriceCache:
         need_fetch = df.empty or df.index.min() > pd.to_datetime(start) or df.index.max() < pd.to_datetime(end)
 
         if need_fetch:
-            df = self._fetch_history(ticker)
+            if self.latest_url:
+                df = self._fetch_latest(ticker, start, end)
+            else:
+                df = self._fetch_history(ticker)
             if df.empty:
                 print(f"Warning: No CoinSpot data for ticker: {ticker}")
                 return pd.Series(name="close", dtype=float)
