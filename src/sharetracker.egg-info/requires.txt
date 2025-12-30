@@ -1,0 +1,9 @@
+pandas>=2.1
+numpy>=1.26
+yfinance>=0.2.40
+python-dateutil>=2.9
+pyyaml>=6.0
+typer>=0.12
+rich>=13.7
+plotly>=5.22
+kaleido>=0.2.1

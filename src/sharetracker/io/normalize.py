@@ -11,6 +11,8 @@ def apply_symbol_map(txs: list[Transaction], symbol_map: dict[str, str]) -> list
             out.append(t)
             continue
         mapped = symbol_map.get(t.symbol, t.symbol)
+        if mapped == t.symbol and t.symbol.endswith(":AU"):
+            mapped = t.symbol.replace(":AU", ".AX")
         if mapped != t.symbol:
             out.append(Transaction(**{**t.__dict__, "symbol": mapped}))
         else:

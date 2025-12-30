@@ -12,6 +12,8 @@ def load_cmc_cash_transaction_summary(path: str) -> list[Transaction]:
     txs: list[Transaction] = []
 
     for i, r in df.iterrows():
+        if pd.isna(r.get("Date")):
+            continue
         dt = datetime.strptime(str(r["Date"]).strip(), "%d/%m/%Y")
         desc = str(r.get("Description", "")).strip()
 

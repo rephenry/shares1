@@ -1,0 +1,18 @@
+base_currency: "AUD"
+timezone: "Australia/Sydney"
+
+benchmark:
+  name: "ASX 200 index"
+  ticker: "^AXJO"   # or use tradeable benchmark e.g. VAS.AX / IOZ.AX
+
+# Map broker symbols to Yahoo tickers where needed
+# Yahoo for ASX generally uses ".AX" suffix; crypto often uses "BTC-AUD" format.
+symbol_map:
+  "CSL": "CSL.AX"
+  "BHP": "BHP.AX"
+  "VAS": "VAS.AX"
+  "IVV:AU": "IVV.AX"
+
+paths:
+  processed_dir: "data/processed"
+  outputs_dir: "outputs"

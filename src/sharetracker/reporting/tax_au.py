@@ -42,7 +42,8 @@ def realized_gains_fifo(txs: list[Transaction]) -> list[RealizedLine]:
             proceeds_total = (t.quantity * t.price) - t.fees
 
             if sym not in lots or sum(l.quantity for l in lots[sym]) + 1e-12 < qty_to_match:
-                raise ValueError(f"Insufficient holdings to sell {qty_to_match} of {sym} on {t.dt}")
+                print(f"Warning: Insufficient holdings to sell {qty_to_match} of {sym} on {t.dt}; skipping")
+                continue
 
             while qty_to_match > 1e-12:
                 lot = lots[sym][0]

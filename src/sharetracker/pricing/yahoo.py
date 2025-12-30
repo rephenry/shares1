@@ -28,8 +28,15 @@ class PriceCache:
         if need_fetch:
             hist = yf.download(ticker, start=start, end=end, auto_adjust=True, progress=False)
             if hist.empty:
-                raise ValueError(f"No Yahoo Finance data for ticker: {ticker}")
-            px = hist["Close"].rename("close").to_frame()
+                print(f"Warning: No Yahoo Finance data for ticker: {ticker}")
+                return pd.Series(name="close", dtype=float)
+            close = hist["Close"]
+            if isinstance(close, pd.DataFrame):
+                if ticker in close.columns:
+                    close = close[ticker]
+                else:
+                    close = close.iloc[:, 0]
+            px = close.rename("close").to_frame()
             px.index = pd.to_datetime(px.index).tz_localize(None)
             df = px
             df.to_parquet(p)
