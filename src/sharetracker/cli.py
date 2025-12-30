@@ -10,6 +10,7 @@ from sharetracker.io.cmc_confirmation import load_cmc_confirmation
 from sharetracker.io.betashares_transactions import load_betashares_transactions
 from sharetracker.io.coinspot_orderhistory import load_coinspot_orderhistory
 from sharetracker.io.normalize import apply_symbol_map, sort_and_dedupe, to_dataframe
+from sharetracker.pricing.coinspot import CoinspotPriceCache
 from sharetracker.pricing.yahoo import PriceCache
 from sharetracker.portfolio.ledger import build_daily_holdings
 from sharetracker.analytics.performance import summary_stats, returns_from_equity
@@ -59,9 +60,22 @@ def run(
 
     # 4) Pricing (Yahoo)
     tickers = [c for c in holdings.columns if c != "cash"]
-    cache = PriceCache(cache_dir=cfg.processed_dir / "price_cache")
+    yahoo_cache = PriceCache(cache_dir=cfg.processed_dir / "price_cache")
+    coinspot_cache = CoinspotPriceCache(
+        cache_dir=cfg.processed_dir / "price_cache",
+        history_url_template=cfg.coinspot_history_url_template,
+        api_key=cfg.coinspot_api_key,
+        api_key_header=cfg.coinspot_api_key_header,
+        timeout_seconds=cfg.coinspot_timeout_seconds,
+    )
 
-    prices = {t: cache.load_or_fetch(t, start=start, end=end) for t in tickers}
+    base_ccy = cfg.base_currency.upper()
+    prices = {}
+    for t in tickers:
+        if t.endswith(f"-{base_ccy}"):
+            prices[t] = coinspot_cache.load_or_fetch(t, start=start, end=end)
+        else:
+            prices[t] = yahoo_cache.load_or_fetch(t, start=start, end=end)
     px_df = pd.DataFrame(prices).reindex(holdings.index).ffill()
     px_df.to_parquet(cfg.processed_dir / "prices.parquet")
 
@@ -72,7 +86,7 @@ def run(
     equity.name = "portfolio"
 
     # 6) Benchmark curve
-    bench_px = cache.load_or_fetch(cfg.benchmark_ticker, start=start, end=end).reindex(holdings.index).ffill()
+    bench_px = yahoo_cache.load_or_fetch(cfg.benchmark_ticker, start=start, end=end).reindex(holdings.index).ffill()
     bench_equity = (bench_px / bench_px.iloc[0]) * float(equity.iloc[0])
     bench_equity.name = "benchmark"
 

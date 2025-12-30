@@ -21,6 +21,7 @@ pip install -e .
 ## Configure
 Copy and edit:
 - `configs/config.example.yml` -> `configs/config.yml` (do not commit)
+- `configs/coinspot.private.yml` (kept private; not committed)
 
 ## Run (single script)
 ```bash

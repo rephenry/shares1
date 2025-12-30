@@ -16,3 +16,10 @@ symbol_map:
 paths:
   processed_dir: "data/processed"
   outputs_dir: "outputs"
+
+# Optional CoinSpot pricing (crypto AUD pairs)
+coinspot:
+  secrets_path: "configs/coinspot.private.yml"
+  history_url_template: "https://www.coinspot.com.au/pubapi/v2/market/history?c={symbol}"
+  api_key_header: "key"
+  timeout_seconds: 30
